@@ -10,6 +10,7 @@ import java.util.Map;
 
 import tools.BasicIO;
 import tools.SortUtil;
+import tools.preprocessing;
 
 public class MatrixAnalysis {
   
@@ -445,6 +446,9 @@ public class MatrixAnalysis {
 	tfmatrix = matrix.ReadTFMatrix("bbc/bbc.mtx");
 	// Calculate TFIDF
 	TermTFIDF = matrix.getTFIDFmap(tfmatrix, "bbc/bbc.classes");
+	// Remove useless terms.
+	TermTFIDF = preprocessing.removeUselessTermsTF(TermTFIDF);
+	
 	matrix.SaveTFIDF(TermTFIDF);
 	System.out.println("finished!");
   }
