@@ -41,8 +41,4 @@ public class readfile {
 			  }
 		 return files;
 	 }
-
-	public static void main(String[] args) throws Exception {
-		
-	}
 }
