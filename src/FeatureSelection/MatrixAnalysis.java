@@ -6,11 +6,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import tools.BasicIO;
 import tools.SortUtil;
 import tools.preprocessing;
+import static tools.preprocessing.getRepeatedTerms;
+import static tools.preprocessing.getTopNTerms;
 
 public class MatrixAnalysis {
   
@@ -380,7 +383,25 @@ public class MatrixAnalysis {
 	tfidf.put(4, (tech1 + 1) / numDocsByCategory.get(4) * Math.log((10 * sum * (tech + 1)) / (sum1 * numDocsByCategory.get(4))));
 	return tfidf;
   }
+  
+  private static ArrayList<String> getCategoryTerms(ArrayList<Map.Entry<String, Double>> catList) {
+	ArrayList<String> ret = new ArrayList<>();
+	for (int i = 0; i < catList.size(); i++) {
+            ret.add(catList.get(i).getKey());
+        }
+	return ret;
+  }
 
+    private static void removeRepeatedTerm(ArrayList<Map.Entry<String, Double>> sortCat, String repeatedTerm) {
+	  for(int i = 0; i < sortCat.size(); i++) {
+		String term = sortCat.get(i).getKey();
+		if(term.equals(repeatedTerm)) {
+		  sortCat.remove(i);
+		  break;
+		}
+	  }
+  }
+  
   /*
    * get tfidf value of the terms of each category.
    */
@@ -410,31 +431,66 @@ public class MatrixAnalysis {
 	ArrayList<Map.Entry<String, Double>> sorted_business = new ArrayList<>(
 			business.entrySet());
 	SortUtil.sortEntry(sorted_business);
-	String a = sorted_business.toString();
-	BasicIO.writeTxtFile(a, "tfidf/business.txt");
-
+	
 	ArrayList<Map.Entry<String, Double>> sorted_entertainment = new ArrayList<>(
 			entertainment.entrySet());
 	SortUtil.sortEntry(sorted_entertainment);
-	String b = sorted_entertainment.toString();
-	BasicIO.writeTxtFile(b, "tfidf/entertainment.txt");
+	
 
 	ArrayList<Map.Entry<String, Double>> sorted_politics = new ArrayList<>(
 			politics.entrySet());
 	SortUtil.sortEntry(sorted_politics);
-	String c = sorted_politics.toString();
-	BasicIO.writeTxtFile(c, "tfidf/politics.txt");
 
 	ArrayList<Map.Entry<String, Double>> sorted_sport = new ArrayList<>(
 			sport.entrySet());
 	SortUtil.sortEntry(sorted_sport);
-	String d = sorted_sport.toString();
-	BasicIO.writeTxtFile(d, "tfidf/sport.txt");
 
 	ArrayList<Map.Entry<String, Double>> sorted_tech = new ArrayList<>(
 			tech.entrySet());
-	SortUtil.sortEntry(sorted_tech);
+	SortUtil.sortEntry(sorted_tech);	
+	
+	////////////////////////////////
+	// Do a post processing. If there are any terms which appear in the top ranking in different
+	// categories, it is not a useful feature.
+	// First, get the top terms for each category
+	int TOPNUM = 20;
+	ArrayList<Map.Entry<String, Double>> topBus = getTopNTerms(sorted_business, TOPNUM);
+	ArrayList<Map.Entry<String, Double>> topEnt = getTopNTerms(sorted_entertainment, TOPNUM);
+	ArrayList<Map.Entry<String, Double>> topPol = getTopNTerms(sorted_politics, TOPNUM);
+	ArrayList<Map.Entry<String, Double>> topSpt = getTopNTerms(sorted_sport, TOPNUM);
+	ArrayList<Map.Entry<String, Double>> toptec = getTopNTerms(sorted_tech, TOPNUM);
+	
+	ArrayList<String> busTerms = getCategoryTerms(topBus);
+	ArrayList<String> entTerms = getCategoryTerms(topEnt);
+	ArrayList<String> polTerms = getCategoryTerms(topPol);
+	ArrayList<String> sptTerms = getCategoryTerms(topSpt);
+	ArrayList<String> tecTerms = getCategoryTerms(toptec);
+	// Join all terms
+	busTerms.addAll(entTerms);
+	busTerms.addAll(polTerms);
+	busTerms.addAll(sptTerms);
+	busTerms.addAll(tecTerms);
+	// Get repeated terms from different categories
+	ArrayList<String> repeatedTerms = getRepeatedTerms(busTerms);
+	// Now remove repeated terms from the categories
+	for(String repeatedTerm : repeatedTerms) {
+	  removeRepeatedTerm(sorted_business, repeatedTerm);
+	  removeRepeatedTerm(sorted_entertainment, repeatedTerm);
+	  removeRepeatedTerm(sorted_politics, repeatedTerm);
+	  removeRepeatedTerm(sorted_sport, repeatedTerm);
+	  removeRepeatedTerm(sorted_tech, repeatedTerm);
+	}
+	////////////////////////////
+	
+	String a = sorted_business.toString();
+	String b = sorted_entertainment.toString();
+	String c = sorted_politics.toString();
+	String d = sorted_sport.toString();
 	String e = sorted_tech.toString();
+	BasicIO.writeTxtFile(a, "tfidf/business.txt");
+	BasicIO.writeTxtFile(b, "tfidf/entertainment.txt");
+	BasicIO.writeTxtFile(c, "tfidf/politics.txt");
+	BasicIO.writeTxtFile(d, "tfidf/sport.txt");
 	BasicIO.writeTxtFile(e, "tfidf/tech.txt");
   }
 
@@ -447,7 +503,8 @@ public class MatrixAnalysis {
 	// Calculate TFIDF
 	TermTFIDF = matrix.getTFIDFmap(tfmatrix, "bbc/bbc.classes");
 	// Remove useless terms.
-	TermTFIDF = preprocessing.removeUselessTermsTF(TermTFIDF);
+	//TermTFIDF = preprocessing.removeUselessTermsTF(TermTFIDF);
+	//List<Integer> termsToDelete = preprocessing.removeUselessTermsDF(tfmatrix);
 	
 	matrix.SaveTFIDF(TermTFIDF);
 	System.out.println("finished!");

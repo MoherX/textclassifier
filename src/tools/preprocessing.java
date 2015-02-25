@@ -1,5 +1,6 @@
 package tools;
 
+import static Classifier.Classifier.readTFIDF;
 import static FeatureSelection.MatrixAnalysis.*;
 
 import java.io.BufferedReader;
@@ -7,12 +8,15 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 public class preprocessing {
-
+  
   public static HashMap<String, String> readStopWordList() {
 	HashMap<String, String> hashMap = new HashMap<String, String>();
 	try {
@@ -37,46 +41,58 @@ public class preprocessing {
   /**
    * Calculates the distances between 5 numbers and verifies if the maximum
    * distance is greater than a threshold value.
+   *
    * @param numbers
    * @param threshold
-   * @return 
+   * @return
    */
-  private static boolean absDistance(double []numbers, double threshold) {
+  private static boolean absDistance(double[] numbers, double threshold) {
 	double maxdistance = Double.MIN_VALUE;
 	double temp;
 	temp = Math.abs(numbers[0] - numbers[1]);
-	if(temp > maxdistance)
+	if (temp > maxdistance) {
 	  maxdistance = temp;
+	}
 	temp = Math.abs(numbers[0] - numbers[2]);
-	if(temp > maxdistance)
+	if (temp > maxdistance) {
 	  maxdistance = temp;
+	}
 	temp = Math.abs(numbers[0] - numbers[3]);
-	if(temp > maxdistance)
+	if (temp > maxdistance) {
 	  maxdistance = temp;
+	}
 	temp = Math.abs(numbers[0] - numbers[4]);
-	if(temp > maxdistance)
+	if (temp > maxdistance) {
 	  maxdistance = temp;
+	}
 	temp = Math.abs(numbers[1] - numbers[2]);
-	if(temp > maxdistance)
+	if (temp > maxdistance) {
 	  maxdistance = temp;
+	}
 	temp = Math.abs(numbers[1] - numbers[3]);
-	if(temp > maxdistance)
+	if (temp > maxdistance) {
 	  maxdistance = temp;
+	}
 	temp = Math.abs(numbers[1] - numbers[4]);
-	if(temp > maxdistance)
+	if (temp > maxdistance) {
 	  maxdistance = temp;
+	}
 	temp = Math.abs(numbers[2] - numbers[3]);
-	if(temp > maxdistance)
+	if (temp > maxdistance) {
 	  maxdistance = temp;
+	}
 	temp = Math.abs(numbers[2] - numbers[4]);
-	if(temp > maxdistance)
+	if (temp > maxdistance) {
 	  maxdistance = temp;
+	}
 	temp = Math.abs(numbers[3] - numbers[4]);
-	if(temp > maxdistance)
+	if (temp > maxdistance) {
 	  maxdistance = temp;
+	}
 	
 	return maxdistance < threshold;
   }
+
   /**
    * Remove useless terms based on TF
    *
@@ -88,18 +104,20 @@ public class preprocessing {
 	while (it.hasNext()) {
 	  Map.Entry entry = (Map.Entry) it.next();
 	  int termIndex = (int) entry.getKey();
-	  Map<Integer, Double> totalTF = (Map<Integer, Double>)entry.getValue();
+	  Map<Integer, Double> totalTF = (Map<Integer, Double>) entry.getValue();
 	  // Get the term frequency for each category
 	  double businessFreq = totalTF.get(0);
 	  double entertnmFreq = totalTF.get(1);
 	  double politicsFreq = totalTF.get(2);
-	  double sportFreq    = totalTF.get(3);
-	  double techFreq     = totalTF.get(4);
+	  double sportFreq = totalTF.get(3);
+	  double techFreq = totalTF.get(4);
 	  // Check whether the frequencies values are close to each other
 	  double THRESHOLD = 0.2;
-	  double[] numbers = { businessFreq, entertnmFreq, politicsFreq, sportFreq, techFreq};
-	  if(absDistance(numbers, THRESHOLD) == true) // numbers are too close
+	  double[] numbers = {businessFreq, entertnmFreq, politicsFreq, sportFreq, techFreq};
+	  if (absDistance(numbers, THRESHOLD) == true) // numbers are too close
+	  {
 		TermTFIDF_Copy.remove(termIndex);
+	  }
 	  // TODO remove terms which appear in top positions in different categories.
 	}
 	return TermTFIDF_Copy;
@@ -108,27 +126,56 @@ public class preprocessing {
   /**
    * Remove useless terms based on DF
    */
-  public static void removeUselessTermsDF() throws IOException {
-	// TODO
-	Map<Integer, Map<Integer, Double>> DFmap = null;
-	DFmap = getDFmap(DFmap, "bbc/bbc.classes");
-
-	Iterator it = DFmap.entrySet().iterator();
+  public static List<Integer> removeUselessTermsDF(Map<Integer, Map<Integer, Double>> tfmatrix) throws IOException {
+	Map<Integer, Map<Integer, Double>> TermDF = getDFmap(tfmatrix, "bbc/bbc.classes");
+	List<Integer> termsToDelete = new ArrayList<Integer>();
+	Iterator it = TermDF.entrySet().iterator();
 	while (it.hasNext()) {
 	  Map.Entry entry = (Map.Entry) it.next();
 	  int termIndex = (int) entry.getKey();
-	  Map<Integer, Double> totalDF = (Map<Integer, Double>)entry.getValue();
+	  Map<Integer, Double> totalTF = (Map<Integer, Double>) entry.getValue();
 	  // Get the term frequency for each category
-	  double businessFreq = totalDF.get(0);
-	  double entertnmFreq = totalDF.get(1);
-	  double politicsFreq = totalDF.get(2);
-	  double sportFreq    = totalDF.get(3);
-	  double techFreq     = totalDF.get(4);
+	  double businessFreq = totalTF.get(0);
+	  double entertnmFreq = totalTF.get(1);
+	  double politicsFreq = totalTF.get(2);
+	  double sportFreq = totalTF.get(3);
+	  double techFreq = totalTF.get(4);
 	  // Check whether the frequencies values are close to each other
-	  double THRESHOLD = 0.5;
-	  double avg = (businessFreq + entertnmFreq + politicsFreq + sportFreq + techFreq)/5.0;
-	  if(Math.abs(avg - businessFreq) < THRESHOLD) // numbers are too close
-		DFmap.remove(termIndex);
+	  double THRESHOLD = 100;
+	  double[] numbers = {businessFreq, entertnmFreq, politicsFreq, sportFreq, techFreq};
+	  if (absDistance(numbers, THRESHOLD) == true) // numbers are too close
+	  {
+		termsToDelete.add(termIndex);
+	  }
 	}
+	return termsToDelete;
+  }
+  
+  public static ArrayList<Map.Entry<String, Double>> getTopNTerms(ArrayList<Map.Entry<String, Double>> catArray, int n) {
+	ArrayList<Map.Entry<String, Double>> subList = new ArrayList<>();
+	for (int i = 0; i < n; i++) {
+	  subList.add(catArray.get(i));
+	}
+	return subList;
+  }
+  
+  public static ArrayList<String> getRepeatedTerms(ArrayList<String> terms) {
+	// Store items that are duplicates in result.
+	ArrayList<String> result = new ArrayList<>();
+	// Record encountered Strings in HashSet.
+	HashSet<String> set = new HashSet<>();
+
+	// Loop over argument list.
+	for (String item : terms) {
+	  // If String is not in set, add it to the and the set.
+	  if (!set.contains(item)) {
+		set.add(item);
+	  } else // if the set contains it, put the duplicate term in the list
+	  {
+		if (!result.contains(item))
+		  result.add(item);
+	  }
+	}
+	return result;
   }
 }
