@@ -162,19 +162,20 @@ public class preprocessing {
   public static ArrayList<String> getRepeatedTerms(ArrayList<String> terms) {
 	// Store items that are duplicates in result.
 	ArrayList<String> result = new ArrayList<>();
-	// Record encountered Strings in HashSet.
-	HashSet<String> set = new HashSet<>();
+	// Record encountered for the first time.
+	HashSet<String> setfirst = new HashSet<>();
+	// Record encountered for the second time.
+	HashSet<String> setsecond = new HashSet<>();
 
 	// Loop over argument list.
 	for (String item : terms) {
 	  // If String is not in set, add it to the and the set.
-	  if (!set.contains(item)) {
-		set.add(item);
-	  } else // if the set contains it, put the duplicate term in the list
-	  {
-		if (!result.contains(item))
+	  if (!setfirst.contains(item)) {
+		setfirst.add(item);
+	  } else if(!setsecond.contains(item)) {
+		setsecond.add(item);
+	  } else if (!result.contains(item)) // if the set contains at least 2 times the term, put in the list
 		  result.add(item);
-	  }
 	}
 	return result;
   }

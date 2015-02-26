@@ -15,14 +15,28 @@ public class Classifier {
 		words=Porter.StemArgs(words);
 		int length = words.length;
 		String sports1=BasicIO.readTxtFile("tfidf/sport.txt");
+		sports1 = sports1.replace("[", "");
+		sports1 = sports1.replace("]", "");
 		Map<String,Double> sports2=readTFIDF(sports1);
+		
 		String tech1=BasicIO.readTxtFile("tfidf/tech.txt");
+		tech1 = tech1.replace("[", "");
+		tech1 = tech1.replace("]", "");
 		Map<String,Double> tech2=readTFIDF(tech1);
+		
 		String business1=BasicIO.readTxtFile("tfidf/business.txt");
+		business1 = business1.replace("[", "");
+		business1 = business1.replace("]", "");
 		Map<String,Double> business2=readTFIDF(business1);
+		
 		String politics1=BasicIO.readTxtFile("tfidf/politics.txt");
+		politics1 = politics1.replace("[", "");
+		politics1 = politics1.replace("]", "");
 		Map<String,Double> politics2=readTFIDF(politics1);
+		
 		String entertainment1=BasicIO.readTxtFile("tfidf/entertainment.txt");
+		entertainment1 = entertainment1.replace("[", "");
+		entertainment1 = entertainment1.replace("]", "");
 		Map<String,Double> entertainment2=readTFIDF(entertainment1);
 		double sport=0;
 		double tech=0;

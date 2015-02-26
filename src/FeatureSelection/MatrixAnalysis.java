@@ -453,7 +453,7 @@ public class MatrixAnalysis {
 	// Do a post processing. If there are any terms which appear in the top ranking in different
 	// categories, it is not a useful feature.
 	// First, get the top terms for each category
-	int TOPNUM = 20;
+	int TOPNUM = 100;
 	ArrayList<Map.Entry<String, Double>> topBus = getTopNTerms(sorted_business, TOPNUM);
 	ArrayList<Map.Entry<String, Double>> topEnt = getTopNTerms(sorted_entertainment, TOPNUM);
 	ArrayList<Map.Entry<String, Double>> topPol = getTopNTerms(sorted_politics, TOPNUM);
