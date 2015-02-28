@@ -1,5 +1,6 @@
 package Classifier;
 
+import static FeatureSelection.PairAnalysis.ReadPair;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -10,6 +11,8 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import tools.BasicIO;
@@ -33,7 +36,14 @@ public class Classifier {
   String entertainment1;
   Map<String, Double> entertainment2;
 
-  public Classifier() {
+  Map<Double, String[]> businessPairMap;
+  Map<Double, String[]> sportsPairMap;
+  Map<Double, String[]> entertainmentPairMap;
+  Map<Double, String[]> politicsPairMap;
+  Map<Double, String[]> techPairMap;
+
+  public Classifier() throws IOException {
+	// Read TFIDF
 	sports1 = BasicIO.readTxtFile("tfidf/sport.txt");
 	sports1 = sports1.replace("[", "");
 	sports1 = sports1.replace("]", "");
@@ -58,22 +68,117 @@ public class Classifier {
 	entertainment1 = entertainment1.replace("[", "");
 	entertainment1 = entertainment1.replace("]", "");
 	entertainment2 = readTFIDF(entertainment1);
+
+	// Read Pairs
+	businessPairMap = ReadPair("tfidf/businesspair.txt");
+	sportsPairMap = ReadPair("tfidf/sportpair.txt");
+	entertainmentPairMap = ReadPair("tfidf/entertainmentpair.txt");
+	politicsPairMap = ReadPair("tfidf/politicspair.txt");
+	techPairMap = ReadPair("tfidf/techpair.txt");
   }
-  
-  public String classify(String input1) {
-	double sport = 0;
-	double tech = 0;
-	double business = 0;
-	double politics = 0;
-	double entertainment = 0;
+
+  public Double[] getPairScores(String[] words) {
+	List<String> wordList = Arrays.asList(words);
+	Double[] scores = new Double[5];
+	scores[0] = 0.0;
+	scores[1] = 0.0;
+	scores[2] = 0.0;
+	scores[3] = 0.0;
+	scores[4] = 0.0;
+	/*
+	 * Get a score for each category
+	 * 0: business
+	 * 1: entertainment
+	 * 2: politics
+	 * 3: sport
+	 * 4: tech
+	 */
 	
+	// Iterate through all pair maps
+	// Business
+	Iterator it = businessPairMap.entrySet().iterator();
+	while (it.hasNext()) {
+	  Map.Entry entry = (Map.Entry) it.next();
+	  Double key = (Double) entry.getKey();
+	  String[] val = (String[]) entry.getValue();
+	  if(val.length != 2) continue;
+	  if (wordList.contains(val[0]) && wordList.contains(val[1])) {
+		scores[0] += key;
+	  }
+	}
+	
+	// Entertainment
+	it = entertainmentPairMap.entrySet().iterator();
+	while (it.hasNext()) {
+	  Map.Entry entry = (Map.Entry) it.next();
+	  Double key = (Double) entry.getKey();
+	  String[] val = (String[]) entry.getValue();
+	  if(val.length != 2) continue;
+	  if (wordList.contains(val[0]) && wordList.contains(val[1])) {
+		scores[1] += key;
+	  }
+	}
+	
+	// Sport
+	it = politicsPairMap.entrySet().iterator();
+	while (it.hasNext()) {
+	  Map.Entry entry = (Map.Entry) it.next();
+	  Double key = (Double) entry.getKey();
+	  String[] val = (String[]) entry.getValue();
+	  if(val.length != 2) continue;
+	  if (wordList.contains(val[0]) && wordList.contains(val[1])) {
+		scores[2] += key;
+	  }
+	}
+	
+	// Sport
+	it = sportsPairMap.entrySet().iterator();
+	while (it.hasNext()) {
+	  Map.Entry entry = (Map.Entry) it.next();
+	  Double key = (Double) entry.getKey();
+	  String[] val = (String[]) entry.getValue();
+	  if(val.length != 2) continue;
+	  if (wordList.contains(val[0]) && wordList.contains(val[1])) {
+		scores[3] += key;
+	  }
+	}
+	
+	// Tech
+	it = techPairMap.entrySet().iterator();
+	while (it.hasNext()) {
+	  Map.Entry entry = (Map.Entry) it.next();
+	  Double key = (Double) entry.getKey();
+	  String[] val = (String[]) entry.getValue();
+	  if(val.length != 2) continue;
+	  if (wordList.contains(val[0]) && wordList.contains(val[1])) {
+		scores[4] += key;
+	  }
+	}
+	return scores;
+  }
+
+  public String classify(String input1) {
+	
+
 	input = preprocess(input1);
 	words = input.split(" ");
 	words = Porter.StemArgs(words);
 	
+	// Get pair scores
+	Double[] pairscores = getPairScores(words);
+	double sport = pairscores[3];
+	double tech = pairscores[4];
+	double business = pairscores[0];
+	double politics = pairscores[2];
+	double entertainment = pairscores[1];	
+	sport *= 10;
+	tech *= 10;
+	business *= 10;
+	politics *= 10;
+	entertainment = pairscores[1];
+
 	int length = words.length;
-	
-	
+
 	for (int i = 0; i < words.length; i++) {
 	  if (sports2.containsKey(words[i])) {
 		sport = sport + sports2.get(words[i]);
@@ -141,57 +246,13 @@ public class Classifier {
 
   }
 
-//  public static void test() {
-//	String a = BasicIO.readTxtFile("/Users/wuqinghao/Documents/ucsb/14fall/CS_273/data/sports_test1.txt");
-//	//String[] b=a.split("talk.politics.misc	|talk.politics.mideast	|talk.politics.guns	");
-//	//String[] b=a.split("comp.graphics	|comp.os.ms-windows.misc	|comp.sys.ibm.pc.hardware	|comp.sys.mac.hardware|comp.windows.x	");
-//	//String[] b=a.split("rec.autos	|rec.motorcycles	");
-//	//String[] b=a.split("soc.religion.christian	|talk.religion.misc	");
-//	String[] b = a.split("rec.sport.baseball	|rec.sport.hockey	");
-//	int count_politics = 0;
-//	int count_comp = 0;
-//	int count_auto = 0;
-//	int count_religion = 0;
-//	int count_sports = 0;
-//	int others = 0;
-//	Classifier clasf = new Classifier
-//	for (int i = 1; i < b.length; i++) {
-//	  if (Classifier(b[i]).equals("politics")) {
-//		count_politics++;
-//	  }
-//	  if (Classifier(b[i]).equals("comp")) {
-//		count_comp++;
-//	  }
-//	  if (Classifier(b[i]).equals("religion")) {
-//		count_religion++;
-//	  }
-//	  if (Classifier(b[i]).equals("sports")) {
-//		count_sports++;
-//	  }
-//	  if (Classifier(b[i]).equals("auto")) {
-//		count_auto++;
-//	  }
-//	  if (Classifier(b[i]).equals("The news does not belong to any category!")) {
-//		others++;
-//	  }
-//
-//	}
-//	System.out.println(b.length - 1);
-//	System.out.println("politics: " + count_politics);
-//	System.out.println("comp: " + count_comp);
-//	System.out.println("religion: " + count_religion);
-//	System.out.println("sports: " + count_sports);
-//	System.out.println("auto: " + count_auto);
-//	System.out.println("others: " + others);
-//  }
-
   public static void classify20Newsgroups() throws FileNotFoundException, IOException {
 	double numDocs = 0; // Total number of documents read
 	double correct = 0; // Number of correct classifications
-	
+
 	// Initialize classifier
 	Classifier clsf = new Classifier();
-	
+
 	try (BufferedReader br = new BufferedReader(new FileReader("20ng-train-no-short.txt"))) {
 	  for (String line; (line = br.readLine()) != null;) {
 		// process the line.
@@ -199,17 +260,19 @@ public class Classifier {
 		String[] contents = line.split("\t");
 		// Get category
 		String category = contents[0];
-		
-		// Skip these.
-		if(category.contains("alt") || category.contains("forsale") || category.contains("religion"))
+
+		// Skip these. BBC does not have a matching category
+		if (category.contains("alt") || category.contains("religion") || category.contains("forsale")
+				|| category.contains("sci") || category.contains("autos") || category.contains("motorcycles")) {
 		  continue;
-		
+		}
+
 		// Define the category according to the classifier
 		if (category.contains("politics")) {
 		  category = "politics";
-		} else if (category.contains("rec")) {
+		} else if (category.contains("sport")) {
 		  category = "sports";
-		} else if (category.contains("comp") || category.contains("sci")) {
+		} else if (category.contains("comp")) {
 		  category = "tech";
 		}
 		// Missing: business and enterntainment
@@ -230,10 +293,6 @@ public class Classifier {
   }
 
   public static void main(String args[]) {
-	//test();
-	//String a=BasicIO.readTxtFile("a.txt");
-	//String result = Classifier("President Barack Obama told Democrats on Friday that their work has improved the economy while strengthening the middle class, and jabbed at Republicans for trying to take the credit after stiffly opposing his agenda for six years. Speaking at the Democratic National Committee's winter meeting, Obama said it is no accident that his policies have lifted the country out of the recession he inherited when he took office. GOP predictions of doom and gloom over policies like health care have proven untrue, the president said.");
-	//System.out.println(result);
 	try {
 	  classify20Newsgroups();
 	} catch (IOException ex) {
