@@ -8,8 +8,10 @@ import java.util.Map;
 
 import FeatureSelection.Porter;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -41,6 +43,9 @@ public class Classifier {
   Map<Double, String[]> entertainmentPairMap;
   Map<Double, String[]> politicsPairMap;
   Map<Double, String[]> techPairMap;
+
+  double numDocs = 0; // Total number of documents read
+  double correct = 0; // Number of correct classifications
 
   public Classifier() throws IOException {
 	// Read TFIDF
@@ -89,11 +94,11 @@ public class Classifier {
 	 * Get a score for each category
 	 * 0: business
 	 * 1: entertainment
-	 * 2: politics
+	 * 2: politicsCorrect
 	 * 3: sport
 	 * 4: tech
 	 */
-	
+
 	// Iterate through all pair maps
 	// Business
 	Iterator it = businessPairMap.entrySet().iterator();
@@ -101,55 +106,65 @@ public class Classifier {
 	  Map.Entry entry = (Map.Entry) it.next();
 	  Double key = (Double) entry.getKey();
 	  String[] val = (String[]) entry.getValue();
-	  if(val.length != 2) continue;
+	  if (val.length != 2) {
+		continue;
+	  }
 	  if (wordList.contains(val[0]) && wordList.contains(val[1])) {
 		scores[0] += key;
 	  }
 	}
-	
+
 	// Entertainment
 	it = entertainmentPairMap.entrySet().iterator();
 	while (it.hasNext()) {
 	  Map.Entry entry = (Map.Entry) it.next();
 	  Double key = (Double) entry.getKey();
 	  String[] val = (String[]) entry.getValue();
-	  if(val.length != 2) continue;
+	  if (val.length != 2) {
+		continue;
+	  }
 	  if (wordList.contains(val[0]) && wordList.contains(val[1])) {
 		scores[1] += key;
 	  }
 	}
-	
+
 	// Sport
 	it = politicsPairMap.entrySet().iterator();
 	while (it.hasNext()) {
 	  Map.Entry entry = (Map.Entry) it.next();
 	  Double key = (Double) entry.getKey();
 	  String[] val = (String[]) entry.getValue();
-	  if(val.length != 2) continue;
+	  if (val.length != 2) {
+		continue;
+	  }
 	  if (wordList.contains(val[0]) && wordList.contains(val[1])) {
 		scores[2] += key;
 	  }
 	}
-	
+
 	// Sport
 	it = sportsPairMap.entrySet().iterator();
 	while (it.hasNext()) {
 	  Map.Entry entry = (Map.Entry) it.next();
 	  Double key = (Double) entry.getKey();
 	  String[] val = (String[]) entry.getValue();
-	  if(val.length != 2) continue;
+	  if (val.length != 2) {
+		continue;
+	  }
 	  if (wordList.contains(val[0]) && wordList.contains(val[1])) {
 		scores[3] += key;
 	  }
 	}
-	
+
 	// Tech
 	it = techPairMap.entrySet().iterator();
 	while (it.hasNext()) {
 	  Map.Entry entry = (Map.Entry) it.next();
 	  Double key = (Double) entry.getKey();
 	  String[] val = (String[]) entry.getValue();
-	  if(val.length != 2) continue;
+	  if (val.length != 2) {
+		continue;
+	  }
 	  if (wordList.contains(val[0]) && wordList.contains(val[1])) {
 		scores[4] += key;
 	  }
@@ -158,19 +173,18 @@ public class Classifier {
   }
 
   public String classify(String input1) {
-	
 
 	input = preprocess(input1);
 	words = input.split(" ");
 	words = Porter.StemArgs(words);
-	
+
 	// Get pair scores
 	Double[] pairscores = getPairScores(words);
 	double sport = pairscores[3];
 	double tech = pairscores[4];
 	double business = pairscores[0];
 	double politics = pairscores[2];
-	double entertainment = pairscores[1];	
+	double entertainment = pairscores[1];
 	sport *= 10;
 	tech *= 10;
 	business *= 10;
@@ -246,16 +260,25 @@ public class Classifier {
 
   }
 
-  public static void classify20Newsgroups() throws FileNotFoundException, IOException {
-	double numDocs = 0; // Total number of documents read
-	double correct = 0; // Number of correct classifications
+  public static void classify20Newsgroups(Classifier clsf) throws FileNotFoundException, IOException {
+	double politicsCorrect = 0; // Number of correct classifications for politics
+	double sportsCorrect = 0; // Number of correct classifications for sports
+	double techCorrect = 0; // Number of correct classifications for tech
+	double politics = 0; // Number testing documents in politics category
+	double sports = 0; // Number testing documents in sports category
+	double tech = 0; // Number testing documents in tech category
+	int lineIdx = 0;
 
-	// Initialize classifier
-	Classifier clsf = new Classifier();
+	// Write the incorrect classifications into a file
+	BufferedWriter out = null;
+	FileWriter fstream = new FileWriter("incorrect.txt", true); //true tells to append data.
+	out = new BufferedWriter(fstream);
 
-	try (BufferedReader br = new BufferedReader(new FileReader("20ng-train-no-short.txt"))) {
+	// Read the 20 newsgroups dataset
+	try (BufferedReader br = new BufferedReader(new FileReader("20ng-train-no-stop.txt"))) {
 	  for (String line; (line = br.readLine()) != null;) {
 		// process the line.
+		lineIdx++;
 		// Separate category from news content
 		String[] contents = line.split("\t");
 		// Get category
@@ -270,10 +293,13 @@ public class Classifier {
 		// Define the category according to the classifier
 		if (category.contains("politics")) {
 		  category = "politics";
+		  politics++;
 		} else if (category.contains("sport")) {
 		  category = "sports";
+		  sports++;
 		} else if (category.contains("comp")) {
 		  category = "tech";
+		  tech++;
 		}
 		// Missing: business and enterntainment
 
@@ -281,22 +307,72 @@ public class Classifier {
 		String result = clsf.classify(contents[1]);
 
 		// Compare classifier result with dataset actual category
-		if (result.equals(category)) {
-		  correct++;
+		if (result.equals(category)) { // Correct classification
+		  clsf.correct++;
+		  if (result.equals("politics")) {
+			politicsCorrect++;
+		  } else if (result.equals("sports")) {
+			sportsCorrect++;
+		  } else if (result.equals("tech")) {
+			techCorrect++;
+		  }
+		} else { // Incorrect classification
+		  out.append("Document line: " + lineIdx + " Classifier category: " + result + "   Actual category: " + category + "\n");
 		}
 
-		numDocs++;
+		clsf.numDocs++;
 	  }
-	  double accuracy = correct / numDocs;
-	  System.out.println("Classifier accuracy = " + accuracy);
+	  System.out.println("Classifier politics accuracy = " + politicsCorrect / politics);
+	  System.out.println("Classifier sports accuracy = " + sportsCorrect / sports);
+	  System.out.println("Classifier tech accuracy = " + techCorrect / tech);
+	}
+	out.close();
+  }
+
+  public static void classifyReuters(Classifier clsf) throws FileNotFoundException, IOException {
+	double businessCorrect = 0; // Number of correct classifications for business
+	double businessDocs = 0;
+
+	// Read the 20 newsgroups dataset
+	try (BufferedReader br = new BufferedReader(new FileReader("r8-train-no-stop.txt"))) {
+	  for (String line; (line = br.readLine()) != null;) {
+		// process the line.
+		// Separate category from news content
+		String[] contents = line.split("\t");
+		// Get category
+		String category = contents[0];
+
+		// Skip these. BBC does not have a matching category
+		if (!category.contains("trade")) {
+		  continue;
+		}
+		category = "business";
+		// Get classifier result
+		String result = clsf.classify(contents[1]);
+
+		// Compare classifier result with dataset actual category
+		if (result.equals(category)) { // Correct classification
+		  businessCorrect++;
+		  clsf.correct++;
+		}
+		clsf.numDocs++;
+		businessDocs++;
+	  }
+	  double accuracy = clsf.correct / clsf.numDocs;
+	  System.out.println("Classifier business accuracy = " + businessCorrect / businessDocs);
+	  System.out.println("Classifier total accuracy = " + accuracy);
 	}
   }
 
-  public static void main(String args[]) {
+  public static void main(String args[]) throws IOException {
+	// Initialize classifier
+	Classifier clsf = new Classifier();
 	try {
-	  classify20Newsgroups();
+	  classify20Newsgroups(clsf);
+	  classifyReuters(clsf);
 	} catch (IOException ex) {
 	  Logger.getLogger(Classifier.class.getName()).log(Level.SEVERE, null, ex);
 	}
+
   }
 }
