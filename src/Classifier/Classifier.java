@@ -8,11 +8,9 @@ import java.util.Map;
 
 import FeatureSelection.Porter;
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -48,6 +46,38 @@ public class Classifier {
   double numDocs = 0; // Total number of documents read
   double correct = 0; // Number of correct classifications
 
+  double politicsCorrect = 0; // Number of correct classifications for politics
+  double sportsCorrect = 0; // Number of correct classifications for sports
+  double techCorrect = 0; // Number of correct classifications for tech
+  double businessCorrect = 0; // Number of correct classifications for business
+  double entertainmentCorrect = 0; // Number of correct classifications for entertainment
+
+  int[][] confusionMatrix;
+
+  public int getCategoryNumber(String category) {
+	/*
+	 * Get a score for each category
+	 * 0: business
+	 * 1: entertainment
+	 * 2: politics
+	 * 3: sport
+	 * 4: tech
+	 */
+	switch (category) {
+	  case "business":
+		return 0;
+	  case "entertainment":
+		return 1;
+	  case "politics":
+		return 2;
+	  case "sports":
+		return 3;
+	  case "tech":
+		return 4;
+	}
+	return -1;
+  }
+
   public Classifier() throws IOException {
 	// Read TFIDF
 	sports1 = BasicIO.readTxtFile("tfidf/sport.txt");
@@ -81,6 +111,9 @@ public class Classifier {
 	entertainmentPairMap = ReadPair("tfidf/entertainmentpair.txt");
 	politicsPairMap = ReadPair("tfidf/politicspair.txt");
 	techPairMap = ReadPair("tfidf/techpair.txt");
+
+	// Initialize confusion matrix
+	confusionMatrix = new int[5][5];
   }
 
   public Double[] getPairScores(String[] words) {
@@ -175,8 +208,9 @@ public class Classifier {
 
   /**
    * Classifies a document
+   *
    * @param input1 string with the document contents
-   * @return 
+   * @return
    */
   public String classify(String input1) {
 
@@ -234,9 +268,6 @@ public class Classifier {
 	  result = "entertainment";
 	  maxvalue = entertainment;
 	}
-	if (maxvalue < (5 * (length * 1.00 / 75))) {
-	  result = "The news does not belong to any category!";
-	}
 	return result;
 
   }
@@ -268,29 +299,20 @@ public class Classifier {
 
   /**
    * Classifies the 20 newsgroups data set
+   *
    * @param clsf classifier object
    * @throws FileNotFoundException
-   * @throws IOException 
+   * @throws IOException
    */
   public static void classify20Newsgroups(Classifier clsf) throws FileNotFoundException, IOException {
-	double politicsCorrect = 0; // Number of correct classifications for politics
-	double sportsCorrect = 0; // Number of correct classifications for sports
-	double techCorrect = 0; // Number of correct classifications for tech
 	double politics = 0; // Number testing documents in politics category
 	double sports = 0; // Number testing documents in sports category
 	double tech = 0; // Number testing documents in tech category
-	int lineIdx = 0;
-
-	// Write the incorrect classifications into a file
-	BufferedWriter out = null;
-	FileWriter fstream = new FileWriter("incorrect.txt", true); //true tells to append data.
-	out = new BufferedWriter(fstream);
 
 	// Read the 20 newsgroups dataset
 	try (BufferedReader br = new BufferedReader(new FileReader("20ng-train-no-stop.txt"))) {
 	  for (String line; (line = br.readLine()) != null;) {
 		// process the line.
-		lineIdx++;
 		// Separate category from news content
 		String[] contents = line.split("\t");
 		// Get category
@@ -322,33 +344,42 @@ public class Classifier {
 		if (result.equals(category)) { // Correct classification
 		  clsf.correct++;
 		  if (result.equals("politics")) {
-			politicsCorrect++;
+			clsf.politicsCorrect++;
 		  } else if (result.equals("sports")) {
-			sportsCorrect++;
+			clsf.sportsCorrect++;
 		  } else if (result.equals("tech")) {
-			techCorrect++;
+			clsf.techCorrect++;
 		  }
 		} else { // Incorrect classification
-		  out.append("Document line: " + lineIdx + " Classifier category: " + result + "   Actual category: " + category + "\n");
+		  /*
+		   * Get a score for each category
+		   * 0: business
+		   * 1: entertainment
+		   * 2: politicsCorrect
+		   * 3: sport
+		   * 4: tech
+		   */
+		  int categoryNo = clsf.getCategoryNumber(category);
+		  int resultNo = clsf.getCategoryNumber(result);
+		  clsf.confusionMatrix[resultNo][categoryNo]++;
 		}
 
 		clsf.numDocs++;
 	  }
-	  System.out.println("Classifier politics accuracy = " + politicsCorrect / politics);
-	  System.out.println("Classifier sports accuracy = " + sportsCorrect / sports);
-	  System.out.println("Classifier tech accuracy = " + techCorrect / tech);
+	  System.out.println("Classifier politics accuracy = " + clsf.politicsCorrect / politics);
+	  System.out.println("Classifier sports accuracy = " + clsf.sportsCorrect / sports);
+	  System.out.println("Classifier tech accuracy = " + clsf.techCorrect / tech);
 	}
-	out.close();
   }
 
   /**
    * Classifies the Reuters data set
+   *
    * @param clsf classifier object
    * @throws FileNotFoundException
-   * @throws IOException 
+   * @throws IOException
    */
   public static void classifyReuters(Classifier clsf) throws FileNotFoundException, IOException {
-	double businessCorrect = 0; // Number of correct classifications for business
 	double businessDocs = 0;
 
 	// Read the 20 newsgroups dataset
@@ -361,7 +392,7 @@ public class Classifier {
 		String category = contents[0];
 
 		// Skip these. BBC does not have a matching category
-		if (!category.contains("trade")) {
+		if (category.contains("earn")) {
 		  continue;
 		}
 		category = "business";
@@ -370,18 +401,23 @@ public class Classifier {
 
 		// Compare classifier result with dataset actual category
 		if (result.equals(category)) { // Correct classification
-		  businessCorrect++;
+		  clsf.businessCorrect++;
 		  clsf.correct++;
+		} else {
+		  int categoryNo = clsf.getCategoryNumber(category);
+		  int resultNo = clsf.getCategoryNumber(result);
+		  clsf.confusionMatrix[resultNo][categoryNo]++;
 		}
 		clsf.numDocs++;
 		businessDocs++;
 	  }
-	  System.out.println("Classifier business accuracy = " + businessCorrect / businessDocs);
+	  System.out.println("Classifier business accuracy = " + clsf.businessCorrect / businessDocs);
 	}
   }
 
   /**
    * Get all files from a directory
+   *
    * @param dir directory to be searched
    * @return list containing the name of all files in dir.
    */
@@ -399,15 +435,15 @@ public class Classifier {
 	}
 	return files;
   }
-  
-/**
- * Classifies the MSN entertainment data set
- * @param clsf classifier object
- * @throws FileNotFoundException
- * @throws IOException 
- */
+
+  /**
+   * Classifies the MSN entertainment data set
+   *
+   * @param clsf classifier object
+   * @throws FileNotFoundException
+   * @throws IOException
+   */
   public static void classifyMSN(Classifier clsf) throws FileNotFoundException, IOException {
-	double entertainmentCorrect = 0; // Number of correct classifications for entertainment
 	double entertainmentDocs = 0;
 
 	// Get all files in the MSN dataset directory
@@ -420,25 +456,48 @@ public class Classifier {
 	  try (BufferedReader br = new BufferedReader(new FileReader(file))) {
 		// Gather all content from a file
 		for (String line; (line = br.readLine()) != null;) {
-		  // process the line.
 		  fileContents += line;
 		}
+
+		String category = "entertainment";
 		// Get classifier result
 		String result = clsf.classify(fileContents);
 
 		// Compare classifier result with dataset actual category
-		if (result.equals("entertainment")) { // Correct classification
-		  entertainmentCorrect++;
+		if (result.equals(category)) { // Correct classification
+		  clsf.entertainmentCorrect++;
 		  clsf.correct++;
+		} else {
+		  int categoryNo = clsf.getCategoryNumber(category);
+		  int resultNo = clsf.getCategoryNumber(result);
+		  clsf.confusionMatrix[resultNo][categoryNo]++;
 		}
 		clsf.numDocs++;
 		entertainmentDocs++;
 	  }
 	}
 	double accuracy = clsf.correct / clsf.numDocs;
-	System.out.println("Classifier entertainment accuracy = " + entertainmentCorrect / entertainmentDocs);
+	System.out.println("Classifier entertainment accuracy = " + clsf.entertainmentCorrect / entertainmentDocs);
 	System.out.println("Classifier total accuracy = " + accuracy);
 
+	// Print number of correct/incorrect classifications by category
+	System.out.println("Correct politics classifications = " + clsf.politicsCorrect);
+	System.out.println("Correct sports classifications = " + clsf.sportsCorrect);
+	System.out.println("Correct tech classifications = " + clsf.techCorrect);
+	System.out.println("Correct business classifications = " + clsf.businessCorrect);
+
+	clsf.confusionMatrix[0][0] = (int) clsf.businessCorrect;
+	clsf.confusionMatrix[1][1] = (int) clsf.entertainmentCorrect;
+	clsf.confusionMatrix[2][2] = (int) clsf.politicsCorrect;
+	clsf.confusionMatrix[3][3] = (int) clsf.sportsCorrect;
+	clsf.confusionMatrix[4][4] = (int) clsf.techCorrect;
+	
+	for (int i = 0; i < 5; i++) {
+	  for (int j = 0; j < 5; j++) {
+		System.out.print(clsf.confusionMatrix[i][j] + " ");
+	  }
+	  System.out.print("\n");
+	}
   }
 
   public static void main(String args[]) throws IOException {

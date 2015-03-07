@@ -17,25 +17,25 @@ import java.util.Map;
 
 public class preprocessing {
   
-  public static HashMap<String, String> readStopWordList() {
-	HashMap<String, String> hashMap = new HashMap<String, String>();
+  public static ArrayList<String> readStopWordList() {
+	ArrayList<String> arrList = new ArrayList<>();
 	try {
 	  String encoding = "utf-8";
-	  File inputFile = new File("files/stopwordlist.txt");
+	  File inputFile = new File("stopwordlist.txt");
 	  if (inputFile.isFile() && inputFile.exists()) {
 		InputStreamReader inputRead = new InputStreamReader(
 				new FileInputStream(inputFile), encoding);
 		BufferedReader bufferedReader = new BufferedReader(inputRead);
 		String lineTxt = null;
 		while ((lineTxt = bufferedReader.readLine()) != null) {
-		  hashMap.put(lineTxt, null);
+		  arrList.add(lineTxt);
 		}
 		bufferedReader.close();
 	  }
 	} catch (Exception e) {
 	  e.printStackTrace();
 	}
-	return hashMap;
+	return arrList;
   }
 
   /**
